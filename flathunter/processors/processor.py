@@ -2,8 +2,7 @@
 from typing import Dict
 
 class Processor:
-    """Processor interface. Flathunter runs sequences of exposes through
-       a set of processors that stack on each other"""
+    """Proves the given listing."""
 
     def process_expose(self, expose: Dict) -> Dict:
         """Mutate the expose. Should be implemented in the subclass"""

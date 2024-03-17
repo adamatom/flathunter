@@ -58,7 +58,7 @@ class UrlsValidator(Validator):
                 raise ValidationError(cursor_position=0, message="Supply at least one URL")
             return
         for searcher in self.config.searchers():
-            if re.search(searcher.URL_PATTERN, document.text):
+            if re.search(searcher.url_pattern, document.text):
                 return
         raise ValidationError(cursor_position=len(document.text),
             message="URL did not match any configured scraper")
@@ -217,7 +217,7 @@ def configure_notifier(notifier: str, config) -> Dict[str, Any]:
 def configure_captcha(urls: List[str], config: YamlConfig) -> Optional[Dict[str, Any]]:
     """Configure the captcha solver, where required"""
     is_immoscout = reduce(lambda a,b: a or b,
-                          [re.search(immobilienscout.STATIC_URL_PATTERN, url) for url in urls],
+                          [re.search(immobilienscout.url_pattern, url) for url in urls],
                           False)
     if not is_immoscout:
         return None

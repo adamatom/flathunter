@@ -1,11 +1,12 @@
-"""Provides logger"""
+"""Provides logger."""
 import logging
 import os
 from pprint import pformat
+from slack_logger import FormatConfig, SlackFormatter, SlackHandler
 
 
 class LoggerHandler(logging.StreamHandler):
-    """Formats logs and alters WebDriverManager's logs properties"""
+    """Formats logs and alters WebDriverManager's logs properties."""
 
     _CYELLOW = '\033[93m' if os.name == 'posix' else ''
     _CBLUE = '\033[94m' if os.name == 'posix' else ''
@@ -17,6 +18,7 @@ class LoggerHandler(logging.StreamHandler):
     _DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
 
     def __init__(self):
+        """Initialize."""
         super().__init__()
         self.setFormatter(logging.Formatter(
             fmt=self._FORMAT,
@@ -24,6 +26,7 @@ class LoggerHandler(logging.StreamHandler):
         ))
 
     def emit(self, record):
+        """Emit the given record."""
         # Log record came from webdriver-manager logger
         if record.name == "WDM":
             # Filename to display in log
@@ -34,7 +37,7 @@ class LoggerHandler(logging.StreamHandler):
 
 
 def setup_wdm_logger(wdm_new_logger_handler):
-    """Setup "webdriver-manager" module's logger"""
+    """Set up "webdriver-manager" module's logger."""
     wdm_log = logging.getLogger('WDM')
     # Only allow critical-level logs by default (mute)
     wdm_log.setLevel(logging.CRITICAL)
@@ -55,10 +58,25 @@ wdm_logger = setup_wdm_logger(logger_handler)
 # Setup "requests" module's logger
 logging.getLogger("requests").setLevel(logging.WARNING)
 
+
 def configure_logging(config):
-    """Setup the logging classes based on verbose config flag"""
+    """Configure logging classes based on verbose config flag."""
     if config.verbose_logging():
         logger.setLevel(logging.DEBUG)
         # Allow logging of "webdriver-manager" module on verbose mode
         wdm_logger.setLevel(logging.INFO)
+    log_webhook = config.slack_log_webhook_url()
+    if log_webhook != "":
+        # disable the startup DEBUG spam from the slack logging module
+        logging.getLogger("slack_logger").setLevel(logging.WARN)
+        format_config = FormatConfig(service="FlatHunter")
+        formatter = SlackFormatter.minimal(format_config)
+        handler = SlackHandler.from_webhook(log_webhook)
+        handler.setFormatter(formatter)
+        if config.verbose_logging():
+            handler.setLevel(logging.DEBUG)
+        else:
+            handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
+
     logger.debug("Settings from config: %s", pformat(config))

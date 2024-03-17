@@ -2,12 +2,13 @@
 import traceback
 from itertools import chain
 import requests
+import re
 
 from flathunter.logging import logger
 from flathunter.config import YamlConfig
 from flathunter.filter import Filter
-from flathunter.processor import ProcessorChain
-from flathunter.captcha.captcha_solver import CaptchaUnsolvableError
+from flathunter.processors import ProcessorChain
+from flathunter.captcha import CaptchaUnsolvableError
 from flathunter.exceptions import ConfigException
 
 class Hunter:
@@ -24,7 +25,7 @@ class Hunter:
         """Trigger a new crawl of the configured URLs"""
         def try_crawl(searcher, url, max_pages):
             try:
-                return searcher.crawl(url, max_pages)
+                return self._crawl(searcher, url, max_pages)
             except CaptchaUnsolvableError:
                 logger.info("Error while scraping url %s: the captcha was unsolvable", url)
                 return []
@@ -35,6 +36,16 @@ class Hunter:
         return chain(*[try_crawl(searcher, url, max_pages)
                        for searcher in self.config.searchers()
                        for url in self.config.target_urls()])
+
+    def _crawl(self, crawler, url, max_pages=None):
+        if re.search(crawler.url_pattern, url):
+            try:
+                return crawler.get_results(url, max_pages)
+            except requests.exceptions.ConnectionError:
+                logger.warning(
+                    "Connection to %s failed. Retrying.", url.split('/')[2])
+                return []
+        return []
 
     def hunt_flats(self, max_pages: None|int = None):
         """Crawl, process and filter exposes"""
@@ -54,7 +65,7 @@ class Hunter:
         result = []
         # We need to iterate over this list to force the evaluation of the pipeline
         for expose in processor_chain.process(self.crawl_for_exposes(max_pages)):
-            logger.info('New offer: %s', expose['title'])
+            logger.info('New offer: %s', expose['title'].replace("\n", ""))
             result.append(expose)
 
         return result

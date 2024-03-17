@@ -1,23 +1,24 @@
 """Captcha solver using ImageTyperz Captcha Solving Service (http://www.imagetyperz.com)"""
-
 import json
-from typing import Dict
-from time import sleep
 import backoff
 import requests
 
+from time import sleep
+from typing import Dict
+
 from flathunter.logging import logger
-from flathunter.captcha.captcha_solver import (
-    CaptchaSolver,
-    CaptchaUnsolvableError,
-    GeetestResponse,
-    RecaptchaResponse,
+
+from flathunter.captcha.commercial_solver import (
+    CommercialSolver, GeetestResponse, RecaptchaResponse
 )
 
-class ImageTyperzSolver(CaptchaSolver):
+from flathunter.captcha.exceptions import CaptchaUnsolvableError
+
+
+class ImageTyperzSolver(CommercialSolver):
     """Implementation of Captcha solver for ImageTyperz"""
 
-    def solve_geetest(self, geetest: str, challenge: str, page_url: str) -> GeetestResponse:
+    def get_geetest_solution(self, geetest: str, challenge: str, page_url: str) -> GeetestResponse:
         logger.info("Trying to solve geetest.")
         params = {
             "action": "UPLOADCAPTCHA",
@@ -43,8 +44,7 @@ class ImageTyperzSolver(CaptchaSolver):
             parts = result.split(";;;")
             return GeetestResponse(parts[0], parts[1], parts[2])
 
-
-    def solve_recaptcha(self, google_site_key: str, page_url: str) -> RecaptchaResponse:
+    def get_recaptcha_solution(self, google_site_key: str, page_url: str) -> RecaptchaResponse:
         logger.info("Trying to solve recaptcha.")
         params = {
             "action": "UPLOADCAPTCHA",
@@ -53,13 +53,11 @@ class ImageTyperzSolver(CaptchaSolver):
             "token": self.api_key,
         }
         captcha_id = self.__submit_imagetyperz_request(
-            "http://www.captchatypers.com/captchaapi/UploadRecaptchaToken.ashx",
-             params
+            "http://www.captchatypers.com/captchaapi/UploadRecaptchaToken.ashx", params
         )
         return RecaptchaResponse(self.__retrieve_imagetyperz_result(captcha_id))
 
-
-    @backoff.on_exception(**CaptchaSolver.backoff_options)
+    @backoff.on_exception(**CommercialSolver.backoff_options)
     def __submit_imagetyperz_request(self, submit_url: str, params: Dict[str, str]) -> str:
         submit_response = requests.get(submit_url, params=params, timeout=30)
         logger.debug("Got response from imagetyperz/request: %s:", submit_response.text)
@@ -67,11 +65,9 @@ class ImageTyperzSolver(CaptchaSolver):
         if "error" in submit_response.text.lower():
             raise requests.HTTPError(response=submit_response)
 
-
         return submit_response.text
 
-
-    @backoff.on_exception(**CaptchaSolver.backoff_options)
+    @backoff.on_exception(**CommercialSolver.backoff_options)
     def __retrieve_imagetyperz_result(self, captcha_id: str):
         retrieve_url = (
             "http://www.captchatypers.com/captchaapi/GetCaptchaResponseJson.ashx"

@@ -2,7 +2,7 @@
 import apprise
 
 from flathunter.abstract_notifier import Notifier
-from flathunter.abstract_processor import Processor
+from flathunter.processors import Processor
 
 
 class SenderApprise(Processor, Notifier):

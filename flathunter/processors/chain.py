@@ -2,14 +2,15 @@
 from functools import reduce
 from typing import List
 
-from flathunter.default_processors import AddressResolver
-from flathunter.default_processors import Filter
-from flathunter.default_processors import LambdaProcessor
-from flathunter.default_processors import CrawlExposeDetails
 from flathunter.notifiers import SenderMattermost, SenderTelegram, SenderApprise, SenderSlack
-from flathunter.gmaps_duration_processor import GMapsDurationProcessor
-from flathunter.idmaintainer import SaveAllExposesProcessor
-from flathunter.abstract_processor import Processor
+
+from flathunter.processors.default_processors import (
+    AddressResolver, Filter, LambdaProcessor, CrawlExposeDetails
+)
+from flathunter.processors.gmaps_duration_processor import GMapsDurationProcessor
+from flathunter.processors.save_processor import SaveAllExposesProcessor
+from flathunter.processors.processor import Processor
+
 
 class ProcessorChainBuilder:
     """Builder pattern for building chains of processors"""
@@ -68,6 +69,7 @@ class ProcessorChainBuilder:
     def build(self):
         """Build the processor chain"""
         return ProcessorChain(self.processors)
+
 
 class ProcessorChain:
     """Class to hold a chain of processors"""

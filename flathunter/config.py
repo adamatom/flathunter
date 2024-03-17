@@ -6,9 +6,12 @@ import json
 import yaml
 from dotenv import load_dotenv
 
-from flathunter.captcha.captcha_solver import CaptchaSolver
-from flathunter.captcha.imagetyperz_solver import ImageTyperzSolver
-from flathunter.captcha.twocaptcha_solver import TwoCaptchaSolver
+from flathunter.captcha import (SolvingStrategy,
+                                ManualSolvingStrategy,
+                                CommercialSolvingStrategy,
+                                CommercialSolver,
+                                ImageTyperzSolver,
+                                TwoCaptchaSolver)
 from flathunter.crawler.kleinanzeigen import Kleinanzeigen
 from flathunter.crawler.idealista import Idealista
 from flathunter.crawler.immobiliare import Immobiliare
@@ -44,6 +47,8 @@ class Env:
     FLATHUNTER_GOOGLE_CLOUD_PROJECT_ID = _read_env(
         "FLATHUNTER_GOOGLE_CLOUD_PROJECT_ID")
     FLATHUNTER_VERBOSE_LOG = _read_env("FLATHUNTER_VERBOSE_LOG")
+    FLATHUNTER_SLACK_LOG_WEBHOOK_URL = _read_env(
+        "FLATHUNTER_SLACK_LOG_WEBHOOK_URL")
     FLATHUNTER_LOOP_PERIOD_SECONDS = _read_env(
         "FLATHUNTER_LOOP_PERIOD_SECONDS")
     FLATHUNTER_LOOP_PAUSE_FROM = _read_env("FLATHUNTER_LOOP_PAUSE_FROM")
@@ -180,7 +185,7 @@ Preis: {price}
 
     def captcha_enabled(self):
         """Check if captcha is configured"""
-        return self._get_captcha_solver() is not None
+        return self._get_captcha_strategy() is not None
 
     def get_captcha_checkbox(self) -> bool:
         """Check if captcha checkbox support is needed"""
@@ -270,6 +275,10 @@ Preis: {price}
         """Webhook for sending Mattermost messages"""
         return self._read_yaml_path('mattermost.webhook_url', None)
 
+    def slack_log_webhook_url(self):
+        """Webhook for sending log output to Slack"""
+        return self._read_yaml_path('slack.log_webhook_url', "")
+
     def slack_webhook_url(self):
         """Webhook for sending Slack messages"""
         return self._read_yaml_path('slack.webhook_url', "")
@@ -286,7 +295,26 @@ Preis: {price}
         """API Token for 2captcha"""
         return self._read_yaml_path("captcha.2captcha.api_key", "")
 
-    def _get_captcha_solver(self) -> Optional[CaptchaSolver]:
+    def _get_captcha_strategy(self) -> Optional[str]:
+        """Get the name of the strategy that should be used to solve captcha puzzles."""
+        return self._read_yaml_path('captcha.strategy', None)
+
+    def get_captcha_strategy(self) -> Optional[SolvingStrategy]:
+        """Get strategy for solving captcha puzzles."""
+        strategy = self._get_captcha_strategy()
+
+        if strategy == "commercial":
+            solver = self._get_captcha_solver()
+            if solver is None:
+                raise ConfigException("No captcha solver configured properly.")
+            return CommercialSolvingStrategy(solver)
+
+        elif strategy == "manual":
+            return ManualSolvingStrategy()
+
+        return None
+
+    def _get_captcha_solver(self) -> Optional[CommercialSolver]:
         """Get configured captcha solver"""
         imagetyperz_token = self._get_imagetyperz_token()
         if imagetyperz_token:
@@ -297,13 +325,6 @@ Preis: {price}
             return TwoCaptchaSolver(twocaptcha_api_key)
 
         return None
-
-    def get_captcha_solver(self) -> CaptchaSolver:
-        """Return the configured captcha solver (or raise exception)"""
-        solver = self._get_captcha_solver()
-        if solver is not None:
-            return solver
-        raise ConfigException("No captcha solver configured properly.")
 
     def captcha_driver_arguments(self):
         """The list of driver arguments for Selenium / Webdriver"""
@@ -357,12 +378,14 @@ Preis: {price}
     def __repr__(self):
         return json.dumps({
             "captcha_enabled": self.captcha_enabled(),
+            "captcha_strategy": self._get_captcha_strategy(),
             "captcha_driver_arguments": self.captcha_driver_arguments(),
             "captcha_solver": type(self._get_captcha_solver()).__name__,
             "imagetyperz_token": elide(self._get_imagetyperz_token()),
             "twocaptcha_key": elide(self.get_twocaptcha_key()),
             "mattermost_webhook_url": self.mattermost_webhook_url(),
             "notifiers": self.notifiers(),
+            "slack_log_webhook_url": self.slack_log_webhook_url(),
             "slack_webhook_url": self.slack_webhook_url(),
             "telegram_receiver_ids": self.telegram_receiver_ids(),
             "telegram_bot_token": elide(self.telegram_bot_token()),
@@ -433,6 +456,12 @@ class Config(CaptchaEnvironmentConfig):  # pylint: disable=too-many-public-metho
         if Env.FLATHUNTER_VERBOSE_LOG is not None:
             return True
         return super().verbose_logging()
+
+    def slack_log_webhook_url(self):
+        """Webhook for sending log output to Slack"""
+        if Env.FLATHUNTER_SLACK_LOG_WEBHOOK_URL is not None:
+            return Env.FLATHUNTER_LOG_SLACK_WEBHOOK_URL
+        return self._read_yaml_path('slack.log_webhook_url', "")
 
     def loop_is_active(self):
         if Env.FLATHUNTER_LOOP_PERIOD_SECONDS is not None:

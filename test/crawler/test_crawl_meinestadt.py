@@ -15,9 +15,9 @@ class MeineStadtCrawlerTest(unittest.TestCase):
         self.crawler = MeineStadt(StringConfig(string=self.DUMMY_CONFIG))
 
     def test(self):
-        soup = self.crawler.get_page(self.TEST_URL)
+        soup = self.crawler._get_page(self.TEST_URL)
         self.assertIsNotNone(soup, "Should get a soup from the URL")
-        entries = self.crawler.extract_data(soup)
+        entries = self.crawler._extract_data(soup)
         self.assertIsNotNone(entries, "Should parse entries from search URL")
         self.assertTrue(len(entries) > 0, "Should have at least one entry")
         self.assertTrue(entries[0]['id'] > 0, "Id should be parsed")

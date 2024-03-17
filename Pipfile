@@ -33,6 +33,7 @@ types-beautifulsoup4 = "*"
 selenium = "*"
 gunicorn = "21.2.0"
 flask-api = {editable = true, ref = "develop", git = "git+https://github.com/flask-api/flask-api.git"}
+slack-logger-python = "*"
 
 [dev-packages]
 

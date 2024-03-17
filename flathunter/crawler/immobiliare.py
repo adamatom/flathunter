@@ -3,6 +3,7 @@ import re
 
 from flathunter.logging import logger
 from flathunter.abstract_crawler import Crawler
+from flathunter.crawler.getsoup import get_page_as_soup, get_soup_with_proxy
 
 
 class Immobiliare(Crawler):
@@ -11,11 +12,33 @@ class Immobiliare(Crawler):
     URL_PATTERN = re.compile(r'https://www\.immobiliare\.it')
 
     def __init__(self, config):
-        super().__init__(config)
         self.config = config
 
+    def get_results(self, search_url, max_pages=None):
+        """Load the list of listings from the site, starting at the provided URL."""
+        logger.debug("Got search URL %s", search_url)
+
+        if self.config.use_proxy():
+            soup = get_soup_with_proxy(search_url, self.HEADERS)
+        else:
+            soup = get_page_as_soup(search_url, self.HEADERS)
+
+        entries = self._extract_data(soup)
+        logger.debug('Number of found entries: %d', len(entries))
+
+        return entries
+
+    def get_expose_details(self, expose):
+        """Load additional details for a single listing."""
+        return expose
+
+    @property
+    def url_pattern(self) -> re.Pattern:
+        """A regex that matches urls that this crawler targets."""
+        return self.URL_PATTERN
+
     # pylint: disable=too-many-locals
-    def extract_data(self, soup):
+    def _extract_data(self, soup):
         """Extracts all exposes from a provided Soup object"""
         entries = []
 

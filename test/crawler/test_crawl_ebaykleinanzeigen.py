@@ -15,9 +15,9 @@ def crawler():
     return Kleinanzeigen(StringConfig(string=DUMMY_CONFIG))
 
 def test_crawler(crawler):
-    soup = crawler.get_page(TEST_URL)
+    soup = crawler._get_page(TEST_URL)
     assert soup is not None
-    entries = crawler.extract_data(soup)
+    entries = crawler._extract_data(soup)
     assert entries is not None
     assert len(entries) > 0
     assert entries[0]['id'] > 0
@@ -26,9 +26,9 @@ def test_crawler(crawler):
         assert entries[0][attr]
 
 def test_process_expose_fetches_details(crawler):
-    soup = crawler.get_page(TEST_URL)
+    soup = crawler._get_page(TEST_URL)
     assert soup is not None
-    entries = crawler.extract_data(soup)
+    entries = crawler._extract_data(soup)
     assert entries is not None
     assert len(entries) > 0
     updated_entries = [ crawler.get_expose_details(expose) for expose in entries ]

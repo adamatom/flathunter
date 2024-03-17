@@ -1,23 +1,23 @@
 """Captcha solver for 2Captcha Captcha Solving Service (https://2captcha.com)"""
 import json
-from typing import Dict
-from time import sleep
 import backoff
 import requests
 
-from flathunter.logging import logger
-from flathunter.captcha.captcha_solver import (
-    CaptchaSolver,
-    CaptchaBalanceEmpty,
-    CaptchaUnsolvableError,
-    GeetestResponse,
-    RecaptchaResponse,
-)
+from typing import Dict
+from time import sleep
 
-class TwoCaptchaSolver(CaptchaSolver):
+from flathunter.logging import logger
+
+from flathunter.captcha.commercial_solver import (
+    CommercialSolver, GeetestResponse, RecaptchaResponse
+)
+from flathunter.captcha.exceptions import CaptchaBalanceEmpty, CaptchaUnsolvableError
+
+
+class TwoCaptchaSolver(CommercialSolver):
     """Implementation of Captcha solver for 2Captcha"""
 
-    def solve_geetest(self, geetest: str, challenge: str, page_url: str) -> GeetestResponse:
+    def get_geetest_solution(self, geetest: str, challenge: str, page_url: str) -> GeetestResponse:
         """Solves GeeTest Captcha"""
         logger.info("Trying to solve geetest.")
         params = {
@@ -34,8 +34,7 @@ class TwoCaptchaSolver(CaptchaSolver):
                                untyped_result["geetest_validate"],
                                untyped_result["geetest_seccode"])
 
-
-    def solve_recaptcha(self, google_site_key: str, page_url: str) -> RecaptchaResponse:
+    def get_recaptcha_solution(self, google_site_key: str, page_url: str) -> RecaptchaResponse:
         logger.info("Trying to solve recaptcha.")
         params = {
             "key": self.api_key,
@@ -46,8 +45,7 @@ class TwoCaptchaSolver(CaptchaSolver):
         captcha_id = self.__submit_2captcha_request(params)
         return RecaptchaResponse(self.__retrieve_2captcha_result(captcha_id))
 
-
-    @backoff.on_exception(**CaptchaSolver.backoff_options)
+    @backoff.on_exception(**CommercialSolver.backoff_options)
     def __submit_2captcha_request(self, params: Dict[str, str]) -> str:
         submit_url = "http://2captcha.com/in.php"
         submit_response = requests.post(submit_url, params=params, timeout=30)
@@ -58,8 +56,7 @@ class TwoCaptchaSolver(CaptchaSolver):
 
         return submit_response.text.split("|")[1]
 
-
-    @backoff.on_exception(**CaptchaSolver.backoff_options)
+    @backoff.on_exception(**CommercialSolver.backoff_options)
     def __retrieve_2captcha_result(self, captcha_id: str):
         retrieve_url = "http://2captcha.com/res.php"
         params = {

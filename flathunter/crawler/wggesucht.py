@@ -1,12 +1,88 @@
 """Expose crawler for WgGesucht"""
 import re
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Union
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
 from flathunter.logging import logger
 from flathunter.abstract_crawler import Crawler
+from flathunter.crawler.getsoup import get_page_as_soup, get_soup_with_proxy
+
+
+class WgGesucht(Crawler):
+    """Implementation of Crawler interface for WgGesucht"""
+
+    URL_PATTERN = re.compile(r'https://www\.wg-gesucht\.de')
+
+    def __init__(self, config):
+        self.config = config
+
+    # pylint: disable=unused-argument
+    def get_results(self, search_url, max_pages=None):
+        """Load the list of listings from the site, starting at the provided URL."""
+        logger.debug("Got search URL %s", search_url)
+        entries = self._extract_data(self._load_page(search_url))
+        logger.debug('Number of found entries: %d', len(entries))
+        return entries
+
+    def get_expose_details(self, expose):
+        """Load additional details for a single listing."""
+        return expose
+
+    @property
+    def url_pattern(self) -> re.Pattern:
+        """A regex that matches urls that this crawler targets."""
+        return self.URL_PATTERN
+
+    def _load_page(self, url) -> BeautifulSoup:
+        """Applies a page number to a formatted search URL and fetches the exposes at that page"""
+
+        # we need to reload the page once for all filters to be applied correctly on wg-gesucht.
+        sess = requests.session()
+        # First page load to set filters; response is discarded
+        sess.get(url, headers=self.HEADERS)
+        # Second page load
+        resp = sess.get(url, headers=self.HEADERS)
+
+        if resp.status_code not in (200, 405):
+            logger.error("Got response (%i): %s", resp.status_code, resp.content)
+        if self.config.use_proxy():
+            return get_soup_with_proxy(url, self.HEADERS)
+        return BeautifulSoup(resp.content, 'lxml')
+
+    # pylint: disable=too-many-locals
+    def _extract_data(self, soup: BeautifulSoup):
+        """Extracts all exposes from a provided Soup object"""
+        entries = []
+
+        findings = soup.find_all(liste_attribute_filter)
+        existing_findings = [
+            e for e in findings
+            if isinstance(e, Tag) and e.has_attr('class') and not 'display-none' in e['class']
+        ]
+        for row in existing_findings:
+            details = parse_expose_element_to_details(row, self.get_name())
+            if details is None:
+                continue
+            entries.append(details)
+
+        logger.debug('Number of entries found: %d', len(entries))
+
+        return entries
+
+    def load_address(self, url) -> Optional[str]:
+        """Extract address from expose itself"""
+        response = self._load_page(url)
+        address_div = response.find('div', {"class": "col-sm-4 mb10"})
+        if not isinstance(address_div, Tag):
+            logger.debug("No address in response for URL: %s", url)
+            return None
+        a_element = address_div.find("a", {"href": "#mapContainer"})
+        if not isinstance(a_element, Tag):
+            logger.debug("No address in response for URL: %s", url)
+            return None
+        return ' '.join(a_element.text.strip().split())
 
 
 def get_title(title_row: Tag) -> str:
@@ -85,12 +161,14 @@ def get_size(numbers_row: Tag) -> List[str]:
         return []
     return re.findall(r'\d{1,4}\sm²', size_el.text)
 
+
 def is_verified_company(row: Tag) -> bool:
     """Filter out ads from 'Verified Companies'"""
     verified_el = row.find("span", {"class": "label_verified"})
     if isinstance(verified_el, Tag):
         return True
     return False
+
 
 # pylint: disable=too-many-return-statements
 def parse_expose_element_to_details(row: Tag, crawler: str) -> Optional[Dict]:
@@ -158,80 +236,3 @@ def liste_attribute_filter(element: Union[Tag, str]) -> bool:
         return False
     return element.attrs["id"].startswith('liste-') and \
         'premium_user_extra_list' not in element.parent.attrs["class"]
-
-
-class WgGesucht(Crawler):
-    """Implementation of Crawler interface for WgGesucht"""
-
-    URL_PATTERN = re.compile(r'https://www\.wg-gesucht\.de')
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.config = config
-
-    # pylint: disable=too-many-locals
-    def extract_data(self, soup: BeautifulSoup):
-        """Extracts all exposes from a provided Soup object"""
-        entries = []
-
-        findings = soup.find_all(liste_attribute_filter)
-        existing_findings = [
-            e for e in findings
-            if isinstance(e, Tag) and e.has_attr('class') and not 'display-none' in e['class']
-        ]
-        for row in existing_findings:
-            details = parse_expose_element_to_details(row, self.get_name())
-            if details is None:
-                continue
-            entries.append(details)
-
-        logger.debug('Number of entries found: %d', len(entries))
-
-        return entries
-
-    def load_address(self, url) -> Optional[str]:
-        """Extract address from expose itself"""
-        response = self.get_soup_from_url(url)
-        address_div = response.find('div', {"class": "col-sm-4 mb10"})
-        if not isinstance(address_div, Tag):
-            logger.debug("No address in response for URL: %s", url)
-            return None
-        a_element = address_div.find("a", {"href": "#mapContainer"})
-        if not isinstance(a_element, Tag):
-            logger.debug("No address in response for URL: %s", url)
-            return None
-        return ' '.join(a_element.text.strip().split())
-
-    def get_soup_from_url(
-            self,
-            url: str,
-            driver: Optional[Any] = None,
-            checkbox: bool = False,
-            afterlogin_string: Optional[str] = None) -> BeautifulSoup:
-        """
-        Creates a Soup object from the HTML at the provided URL
-
-        Overwrites the method inherited from abstract_crawler. This is
-        necessary as we need to reload the page once for all filters to
-        be applied correctly on wg-gesucht.
-        """
-        sess = requests.session()
-        # First page load to set filters; response is discarded
-        sess.get(url, headers=self.HEADERS)
-        # Second page load
-        resp = sess.get(url, headers=self.HEADERS)
-
-        if resp.status_code not in (200, 405):
-            logger.error("Got response (%i): %s",
-                         resp.status_code, resp.content)
-        if self.config.use_proxy():
-            return self.get_soup_with_proxy(url)
-        if driver is not None:
-            driver.get(url)
-            if re.search("initGeetest", driver.page_source):
-                self.resolve_geetest(driver)
-            elif re.search("g-recaptcha", driver.page_source):
-                self.resolve_recaptcha(
-                    driver, checkbox, afterlogin_string or "")
-            return BeautifulSoup(driver.page_source, 'lxml')
-        return BeautifulSoup(resp.content, 'lxml')

@@ -5,25 +5,7 @@ import datetime
 import json
 
 from flathunter.logging import logger
-from flathunter.abstract_processor import Processor
 
-__author__ = "Nody"
-__version__ = "0.1"
-__maintainer__ = "Nody"
-__email__ = "harrymcfly@protonmail.com"
-__status__ = "Prodction"
-
-class SaveAllExposesProcessor(Processor):
-    """Processor that saves all exposes to the database"""
-
-    def __init__(self, config, id_watch):
-        self.config = config
-        self.id_watch = id_watch
-
-    def process_expose(self, expose):
-        """Save a single expose"""
-        self.id_watch.save_expose(expose)
-        return expose
 
 class IdMaintainer:
     """SQLite back-end for the database"""

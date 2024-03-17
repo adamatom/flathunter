@@ -1,73 +1,111 @@
 """Expose crawler for Ebay Kleinanzeigen"""
 import re
 import datetime
-from typing import Optional
+import backoff
 
-from bs4 import Tag
+from bs4 import BeautifulSoup, Tag
 from selenium.webdriver import Chrome
+from selenium.common.exceptions import TimeoutException
 
 from flathunter.abstract_crawler import Crawler
 from flathunter.chrome_wrapper import get_chrome_driver
-from flathunter.exceptions import DriverLoadException
 from flathunter.logging import logger
+
+MONTHS = {
+    "Januar": "01",
+    "Februar": "02",
+    "März": "03",
+    "April": "04",
+    "Mai": "05",
+    "Juni": "06",
+    "Juli": "07",
+    "August": "08",
+    "September": "09",
+    "Oktober": "10",
+    "November": "11",
+    "Dezember": "12"
+}
+
 
 class Kleinanzeigen(Crawler):
     """Implementation of Crawler interface for Ebay Kleinanzeigen"""
 
     URL_PATTERN = re.compile(r'https://www\.kleinanzeigen\.de')
-    MONTHS = {
-        "Januar": "01",
-        "Februar": "02",
-        "März": "03",
-        "April": "04",
-        "Mai": "05",
-        "Juni": "06",
-        "Juli": "07",
-        "August": "08",
-        "September": "09",
-        "Oktober": "10",
-        "November": "11",
-        "Dezember": "12"
-    }
 
     def __init__(self, config):
-        super().__init__(config)
         self.config = config
         self.driver = None
+        self.disabled = False
 
+        if not self.config.captcha_enabled():
+            logger.info("disabling %s because captcha solving is not enabled", self.get_name())
+            self.disabled = True
+            return
 
-    def get_driver(self) -> Optional[Chrome]:
-        """Lazy method to fetch the driver as required at runtime"""
-        if self.driver is not None:
-            return self.driver
-        driver_arguments = self.config.captcha_driver_arguments()
-        self.driver = get_chrome_driver(driver_arguments)
-        return self.driver
+        self.captcha_strategy = self.config.get_captcha_strategy()
+        if self.captcha_strategy is None:
+            logger.info("disabling %s because captcha strategy is not declared", self.get_name())
+            self.disabled = True
+            return
 
-    def get_driver_force(self) -> Chrome:
-        """Fetch the driver, and throw an exception if it is not configured or available"""
-        res = self.get_driver()
-        if res is None:
-            raise DriverLoadException("Unable to load chrome driver when expected")
-        return res
+    # pylint: disable=unused-argument
+    def get_results(self, search_url, max_pages=None):
+        """Load the list of listings from the site, starting at the provided URL."""
+        if self.disabled:
+            return []
 
-    def get_page(self, search_url, driver=None, page_no=None):
-        """Applies a page number to a formatted search URL and fetches the exposes at that page"""
-        return self.get_soup_from_url(search_url, driver=self.get_driver())
+        logger.debug("Got search URL %s", search_url)
+
+        # load first page
+        soup = self._load_page(search_url)
+
+        # get data from first page
+        entries = self._extract_data(soup)
+        logger.debug('Number of found entries: %d', len(entries))
+
+        return entries
 
     def get_expose_details(self, expose):
-        soup = self.get_page(expose['url'], self.get_driver())
+        """Load additional details for a single listing."""
+        if self.disabled:
+            return expose
+
+        soup = self._load_page(expose['url'])
         for detail in soup.find_all('li', {"class": "addetailslist--detail"}):
             if re.match(r'Verfügbar ab', detail.text):
                 date_string = re.match(r'(\w+) (\d{4})', detail.text)
                 if date_string is not None:
-                    expose['from'] = "01." + self.MONTHS[date_string[1]] + "." + date_string[2]
+                    expose['from'] = "01." + MONTHS[date_string[1]] + "." + date_string[2]
         if 'from' not in expose:
             expose['from'] = datetime.datetime.now().strftime('%02d.%02m.%Y')
         return expose
 
+    @property
+    def url_pattern(self) -> re.Pattern:
+        """A regex that matches urls that this crawler targets."""
+        return self.URL_PATTERN
+
+    @backoff.on_exception(wait_gen=backoff.constant, exception=TimeoutException, max_tries=3)
+    def _load_page(self, url) -> BeautifulSoup:
+        """Applies a page number to a formatted search URL and fetches the exposes at that page"""
+
+        # TODO: use get_proxies, use those with driver to get the page
+        # if self.config.use_proxy():
+        #     return get_soup_with_proxy(url, self.HEADERS)
+        if self.driver is None:
+            driver_arguments = self.config.captcha_driver_arguments()
+            self.driver = get_chrome_driver(driver_arguments)
+
+        self.driver.get(url)
+        if "initGeetest" in self.driver.page_source:
+            self.captcha_strategy.resolve_geetest(self.driver)
+        elif "g-recaptcha" in self.driver.page_source:
+            self.captcha_strategy.resolve_recaptcha(self.driver, False, "")
+
+        return BeautifulSoup(self.driver.page_source, 'lxml')
+
     # pylint: disable=too-many-locals
-    def extract_data(self, soup):
+    def _extract_data(self, soup):
         """Extracts all exposes from a provided Soup object"""
         entries = []
         soup = soup.find(id="srchrslt-adtable")
@@ -129,7 +167,7 @@ class Kleinanzeigen(Crawler):
 
     def load_address(self, url):
         """Extract address from expose itself"""
-        expose_soup = self.get_page(url)
+        expose_soup = self._load_page(url)
         street_raw = ""
         street_el = expose_soup.find(id="street-address")
         if isinstance(street_el, Tag):

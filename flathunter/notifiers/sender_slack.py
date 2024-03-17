@@ -5,7 +5,7 @@ from typing import Dict
 import requests
 
 from flathunter.abstract_notifier import Notifier
-from flathunter.abstract_processor import Processor
+from flathunter.processors import Processor
 from flathunter.config import YamlConfig
 from flathunter.logging import logger
 
@@ -38,7 +38,6 @@ class SenderSlack(Processor, Notifier):
     def __send_message(self, message: str) -> None:
         """Send messages to the Slack webhook"""
         logger.debug(('webhook_url:', self.webhook_url))
-        logger.debug(('message', message))
         response = requests.post(
             self.webhook_url,
             data=json.dumps({"text": message}),

@@ -6,7 +6,7 @@ from typing import List, Dict, Optional
 import requests
 
 from flathunter.abstract_notifier import Notifier
-from flathunter.abstract_processor import Processor
+from flathunter.processors import Processor
 from flathunter.config import YamlConfig
 from flathunter.exceptions import BotBlockedException
 from flathunter.exceptions import UserDeactivatedException

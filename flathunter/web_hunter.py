@@ -3,7 +3,7 @@ from flathunter.config import YamlConfig
 from flathunter.logging import logger
 from flathunter.hunter import Hunter
 from flathunter.filter import Filter
-from flathunter.processor import ProcessorChain
+from flathunter.processors import ProcessorChain
 from flathunter.exceptions import BotBlockedException, UserDeactivatedException
 
 class WebHunter(Hunter):

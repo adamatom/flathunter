@@ -30,14 +30,14 @@ class Heartbeat:
     def __init__(self, config: YamlConfig, interval: str):
         notifiers = config.notifiers()
 
-        if 'mattermost' in notifiers:
+        if 'slack' in notifiers:
+            self.notifier = SenderSlack(config)
+        elif 'mattermost' in notifiers:
             self.notifier = SenderMattermost(config)
         elif 'telegram' in notifiers:
             self.notifier = SenderTelegram(config)
         elif 'apprise' in notifiers:
             self.notifier = SenderApprise(config)
-        elif 'slack' in notifiers:
-            self.notifier = SenderSlack(config)
         else:
             raise HeartbeatException("No notifier configured - check 'notifiers' config section!")
 

@@ -17,9 +17,9 @@ def crawler():
 
 
 def test_crawler(crawler):
-    soup = crawler.get_page(TEST_URL)
+    soup = crawler._get_page(TEST_URL)
     assert soup is not None
-    entries = crawler.extract_data(soup)
+    entries = crawler._extract_data(soup)
     assert entries is not None
     assert len(entries) > 0
     assert entries[0]['id']
@@ -32,9 +32,9 @@ def test_dont_crawl_other_urls(crawler):
     assert count(exposes) == 0
 
 def test_process_expose_fetches_details(crawler):
-    soup = crawler.get_page(TEST_URL)
+    soup = crawler._get_page(TEST_URL)
     assert soup is not None
-    entries = crawler.extract_data(soup)
+    entries = crawler._extract_data(soup)
     assert entries is not None
     assert len(entries) > 0
     updated_entries = [ crawler.get_expose_details(expose) for expose in entries ]

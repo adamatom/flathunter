@@ -5,7 +5,8 @@ from urllib.parse import quote_plus
 import requests
 
 from flathunter.logging import logger
-from flathunter.abstract_processor import Processor
+from flathunter.processors import Processor
+
 
 class GMapsDurationProcessor(Processor):
     """Implementation of Processor class to calculate travel durations"""
@@ -19,10 +20,15 @@ class GMapsDurationProcessor(Processor):
 
     def process_expose(self, expose):
         """Calculate the durations for an expose"""
-        expose['durations'] = self.get_formatted_durations(expose['address']).strip()
+        if expose['address'] is None:
+            logger.warning('expose[address] was none, setting to empty string')
+            expose['address'] = ""
+
+        expose['durations'] = self._get_formatted_durations(expose['address'])
+        expose['durations'].strip()
         return expose
 
-    def get_formatted_durations(self, address):
+    def _get_formatted_durations(self, address):
         """Return a formatted list of GoogleMaps durations"""
         out = ""
         for duration in self.config.get('durations', []):
@@ -32,13 +38,13 @@ class GMapsDurationProcessor(Processor):
                 for mode in duration.get('modes', []):
                     if 'gm_id' in mode and 'title' in mode \
                                        and 'key' in self.config.get('google_maps_api', {}):
-                        duration = self.get_gmaps_distance(address, dest, mode['gm_id'])
+                        duration = self._get_gmaps_distance(address, dest, mode['gm_id'])
                         title = mode['title']
-                        out += f"> {name} ({title}): {duration}\n"
+                        out += f"To {name} via {title}: {duration}\n"
 
         return out.strip()
 
-    def get_gmaps_distance(self, address, dest, mode):
+    def _get_gmaps_distance(self, address, dest, mode):
         """Get the distance"""
         # get timestamp for next monday at 9:00:00 o'clock
         now = datetime.datetime.today().replace(hour=9, minute=0, second=0)
@@ -56,8 +62,8 @@ class GMapsDurationProcessor(Processor):
 
         if not gm_key and mode != self.GM_MODE_DRIVING:
             logger.warning("No Google Maps API key configured and without using a mode "
-                                 "different from 'driving' is not allowed. "
-                                 "Downgrading to mode 'drinving' thus. ")
+                           "different from 'driving' is not allowed. "
+                           "Downgrading to mode 'driving'. ")
             mode = 'driving'
             base_url = base_url.replace('&key={key}', '')
 
@@ -75,13 +81,13 @@ class GMapsDurationProcessor(Processor):
             for element in row['elements']:
                 if 'status' in element and element['status'] != 'OK':
                     logger.warning("For address %s we got the status message: %s",
-                                         address, element['status'])
+                                   address, element['status'])
                     logger.debug("We got this result: %s", repr(result))
                     continue
                 logger.debug("Got distance and duration: %s / %s (%i seconds)",
-                                   element['distance']['text'],
-                                   element['duration']['text'],
-                                   element['duration']['value'])
+                             element['distance']['text'],
+                             element['duration']['text'],
+                             element['duration']['value'])
                 duration_text = element['duration']['text']
                 distance_text = element['distance']['text']
                 distances[element['duration']['value']] = f"{duration_text} ({distance_text})"

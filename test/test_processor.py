@@ -1,7 +1,7 @@
 import unittest
 from flathunter.hunter import Hunter
 from flathunter.idmaintainer import IdMaintainer
-from flathunter.processor import ProcessorChain
+from flathunter.processors import ProcessorChain
 from test.dummy_crawler import DummyCrawler
 from test.test_util import count
 from test.utils.config import StringConfig

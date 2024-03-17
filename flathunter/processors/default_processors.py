@@ -3,7 +3,8 @@
 import re
 
 from flathunter.logging import logger
-from flathunter.abstract_processor import Processor
+from flathunter.processors import Processor
+
 
 class Filter(Processor):
     """Filter processor implementation. Applies a filter to the list of exposes"""
@@ -14,6 +15,7 @@ class Filter(Processor):
 
     def process_exposes(self, exposes):
         return self.filter.filter(exposes)
+
 
 class AddressResolver(Processor):
     """Processor to extract apartment addresses from expose links"""
@@ -26,11 +28,12 @@ class AddressResolver(Processor):
         if expose['address'].startswith('http'):
             url = expose['address']
             for searcher in self.config.searchers():
-                if re.search(searcher.URL_PATTERN, url):
+                if re.search(searcher.url_pattern, url):
                     expose['address'] = searcher.load_address(url)
                     logger.debug("Loaded address %s for url %s", expose['address'], url)
                     break
         return expose
+
 
 class CrawlExposeDetails(Processor):
     """Processor to extract additional apartment details by parsing page at expose URL"""
@@ -41,9 +44,10 @@ class CrawlExposeDetails(Processor):
     def process_expose(self, expose):
         """Fetches the page at exposes['url'] and extracts additional details from it"""
         for searcher in self.config.searchers():
-            if re.search(searcher.URL_PATTERN, expose['url']):
+            if re.search(searcher.url_pattern, expose['url']):
                 expose = searcher.get_expose_details(expose)
         return expose
+
 
 class LambdaProcessor(Processor):
     """Processor to apply arbitrary logic to each expose"""
