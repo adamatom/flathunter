@@ -1,8 +1,8 @@
 import unittest
 import re
 from typing import Optional, Dict, List
-from flathunter.crawler.immowelt import Immowelt
-from flathunter.hunter import Hunter 
+from flathunter.crawlers.immowelt import Immowelt
+from flathunter.hunter import Hunter
 from flathunter.idmaintainer import IdMaintainer
 from test.dummy_crawler import DummyCrawler
 from test.test_util import count

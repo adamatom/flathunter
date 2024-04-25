@@ -12,15 +12,15 @@ from flathunter.captcha import (SolvingStrategy,
                                 CommercialSolver,
                                 ImageTyperzSolver,
                                 TwoCaptchaSolver)
-from flathunter.crawler.kleinanzeigen import Kleinanzeigen
-from flathunter.crawler.idealista import Idealista
-from flathunter.crawler.immobiliare import Immobiliare
-from flathunter.crawler.immobilienscout import Immobilienscout
-from flathunter.crawler.immowelt import Immowelt
-from flathunter.crawler.meinestadt import MeineStadt
-from flathunter.crawler.wggesucht import WgGesucht
-from flathunter.crawler.vrmimmo import VrmImmo
-from flathunter.crawler.subito import Subito
+from flathunter.crawlers.kleinanzeigen import Kleinanzeigen
+from flathunter.crawlers.idealista import Idealista
+from flathunter.crawlers.immobiliare import Immobiliare
+from flathunter.crawlers.immobilienscout import Immobilienscout
+from flathunter.crawlers.immowelt import Immowelt
+from flathunter.crawlers.meinestadt import MeineStadt
+from flathunter.crawlers.wggesucht import WgGesucht
+from flathunter.crawlers.vrmimmo import VrmImmo
+from flathunter.crawlers.subito import Subito
 from flathunter.filter import Filter
 from flathunter.logging import logger
 from flathunter.exceptions import ConfigException

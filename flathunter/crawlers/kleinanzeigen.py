@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup, Tag
 from selenium.webdriver import Chrome
 from selenium.common.exceptions import TimeoutException
 
-from flathunter.crawler.abstract_crawler import Crawler
+from flathunter.crawlers.abstract_crawler import Crawler
 from flathunter.chrome_wrapper import get_chrome_driver
 from flathunter.logging import logger
 

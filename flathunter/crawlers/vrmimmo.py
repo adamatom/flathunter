@@ -5,8 +5,8 @@ import hashlib
 from bs4 import BeautifulSoup
 
 from flathunter.logging import logger
-from flathunter.crawler.abstract_crawler import Crawler
-from flathunter.crawler.getsoup import get_page_as_soup, get_soup_with_proxy
+from flathunter.crawlers.abstract_crawler import Crawler
+from flathunter.crawlers.getsoup import get_page_as_soup, get_soup_with_proxy
 
 
 class VrmImmo(Crawler):

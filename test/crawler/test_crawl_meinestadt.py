@@ -1,5 +1,5 @@
 import unittest
-from flathunter.crawler.meinestadt import MeineStadt
+from flathunter.crawlers.meinestadt import MeineStadt
 from test.utils.config import StringConfig
 
 

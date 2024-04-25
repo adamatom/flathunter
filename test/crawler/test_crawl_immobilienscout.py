@@ -4,7 +4,7 @@ import os
 import requests_mock
 import re
 
-from flathunter.crawler.immobilienscout import Immobilienscout
+from flathunter.crawlers.immobilienscout import Immobilienscout
 from flathunter.captcha import CaptchaBalanceEmpty
 from test.utils.config import StringConfigWithCaptchas
 

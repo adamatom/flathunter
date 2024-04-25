@@ -1,5 +1,5 @@
 import unittest
-from flathunter.crawler.immobiliare import Immobiliare
+from flathunter.crawlers.immobiliare import Immobiliare
 from test.utils.config import StringConfig
 
 
