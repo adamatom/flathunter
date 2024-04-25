@@ -19,7 +19,7 @@ class ManualSolvingStrategy(SolvingStrategy):
                 EC.invisibility_of_element((By.XPATH, '//*[@id="captcha-box"]')))
         except NoSuchElementException:
             pass
-        logger.info("captcha-box is gone")
+        logger.debug("captcha-box is gone")
 
     def resolve_recaptcha(self, driver, checkbox: bool, afterlogin_string: str = ""):
         """Resolve a recaptcha puzzle."""
@@ -29,4 +29,4 @@ class ManualSolvingStrategy(SolvingStrategy):
                 (By.CSS_SELECTOR, "iframe[src^='https://www.google.com/recaptcha/api2/anchor?']")))
         except NoSuchElementException:
             pass
-        logger.info("recaptcha frame is gone")
+        logger.debug("recaptcha frame is gone")
