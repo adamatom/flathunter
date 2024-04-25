@@ -15,7 +15,11 @@ def get_page_as_soup(url, headers) -> BeautifulSoup:
         user_agent = 'Unknown'
         if 'User-Agent' in headers:
             user_agent = headers['User-Agent']
-        logger.error("Got response (%i): %s\n%s", resp.status_code, resp.content, user_agent)
+        if resp.status_code in [500, 502]:
+            # soften reporting on 500 errors, the server can just be temporarily having trouble
+            logger.debug("Got response (%i): %s\n%s", resp.status_code, resp.content, user_agent)
+        else:
+            logger.error("Got response (%i): %s\n%s", resp.status_code, resp.content, user_agent)
     return BeautifulSoup(resp.content, 'lxml')
 
 
@@ -37,7 +41,10 @@ def get_soup_with_proxy(url, request_headers) -> BeautifulSoup:
                     timeout=(20, 0.1)
                 )
 
-                if resp.status_code != 200:
+                if resp.status_code in [500, 502]:
+                    # When the server is failing, it is annoying to see the 500's repeat
+                    logger.debug("Got response (%i): %s", resp.status_code, resp.content)
+                elif resp.status_code != 200:
                     logger.error("Got response (%i): %s", resp.status_code, resp.content)
                 else:
                     resolved = True
