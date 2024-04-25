@@ -10,7 +10,7 @@ from selenium.webdriver import Chrome
 from selenium.common.exceptions import TimeoutException
 from time import sleep
 
-from flathunter.crawlers.abstract_crawler import Crawler
+from flathunter.crawlers.crawler import Crawler
 from flathunter.logging import logger
 from flathunter.chrome_wrapper import get_chrome_driver
 

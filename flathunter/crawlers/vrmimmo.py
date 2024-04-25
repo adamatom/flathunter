@@ -5,7 +5,7 @@ import hashlib
 from bs4 import BeautifulSoup
 
 from flathunter.logging import logger
-from flathunter.crawlers.abstract_crawler import Crawler
+from flathunter.crawlers.crawler import Crawler
 from flathunter.crawlers.getsoup import get_page_as_soup, get_soup_with_proxy
 
 
